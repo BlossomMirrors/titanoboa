@@ -2,25 +2,17 @@
 
 A [bootc](https://github.com/bootc-dev/bootc) installer designed to install an image as quickly as possible. Handles a live user session and then hands off to Anaconda or Readymade for installation. 
 
-## Mission
+## What is this?
 
-This is an experiment to see how far we can get building our own ISOs. The objective is to:
+This is the secret sauce in building our own ISOs. The objective is to:
 
 - Generate a LiveCD so users can try out an image before committing
 - Install the image and flatpaks to a selected disk with minimal user-input
-- Basically be an MVP for `bootc install` 
-
-## Why?
-
-Waiting for existing installers to move to cloud native is untenable, let's see if we can remove that external dependency forever. 😈
-
-## Components
-
-- LiveCD
+- Be a fully automated system for building live ISOs
 
 ---
 
-## End-User Documentation
+## Documentation
 
 This guide explains how to consume Titanoboa to create a live ISO image of your custom bootc container image. The [@ublue-os/bluefin](https://github.com/ublue-os/bluefin) repository is the canonical example of this integration.
 
