@@ -178,11 +178,13 @@ rootfs-include-container container_image=default_image image=default_image netin
     dnf install -y fuse-overlayfs"
     chroot "$CMD"
 
-# Install Flatpaks into the live system
-rootfs-include-flatpaks FLATPAKS_FILE="src/flatpaks.example.txt":
+# Install Flatpaks into the live system. Skipped for a non-live netinstall
+# build (the default): the installed system fetches flatpaks over the
+# network at install time instead, same rationale as rootfs-include-container.
+rootfs-include-flatpaks FLATPAKS_FILE="src/flatpaks.example.txt" livesys="1" netinstall="1":
     #!/usr/bin/env bash
     {{ _ci_grouping }}
-    {{ if FLATPAKS_FILE =~ '(^$|^(?i)\bnone\b$)' { 'exit 0' } else if path_exists(FLATPAKS_FILE) == 'false' { error('Flatpak file inaccessible: ' + FLATPAKS_FILE) } else { '' } }}
+    {{ if netinstall == "1" && livesys == "0" { 'exit 0' } else if FLATPAKS_FILE =~ '(^$|^(?i)\bnone\b$)' { 'exit 0' } else if path_exists(FLATPAKS_FILE) == 'false' { error('Flatpak file inaccessible: ' + FLATPAKS_FILE) } else { '' } }}
     {{ chroot_function }}
     CMD='set -xeuo pipefail
     mkdir -p /var/lib/flatpak
@@ -437,7 +439,7 @@ iso:
     (rootfs image) \
     (hook-pre-initramfs HOOK_pre_initramfs) \
     initramfs \
-    (rootfs-include-flatpaks flatpaks_file) \
+    (rootfs-include-flatpaks flatpaks_file livesys netinstall) \
     (rootfs-include-polkit polkit) \
     (rootfs-install-livesys-scripts livesys) \
     (rootfs-include-container container_image image netinstall) \
