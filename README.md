@@ -213,7 +213,7 @@ This creates `output.iso` in the current directory.
 The `just build` command accepts multiple parameters:
 
 ```bash
-just build <image> [livesys] [flatpaks_file] [compression] [extra_kargs] [container_image] [polkit]
+just build <image> [livesys] [flatpaks_file] [compression] [extra_kargs] [container_image] [polkit] [netinstall]
 ```
 
 **Parameters:**
@@ -224,6 +224,12 @@ just build <image> [livesys] [flatpaks_file] [compression] [extra_kargs] [contai
 - `extra_kargs`: Comma-separated kernel arguments (default: `NONE`)
 - `container_image`: Container to install vs. the ISO rootfs image (default: same as `image`)
 - `polkit`: Add polkit rules (`1` or `0`, default: `1`)
+- `netinstall`: Fetch the container image over the network at install time instead of
+  embedding it in the ISO (`1` or `0`, default: `1`). Roughly halves what gets baked
+  into the ISO, at the cost of needing network access during install. Set to `0` for
+  the old offline-installable behavior — the image gets pulled into the rootfs's
+  container storage and installed via the `containers-storage` transport instead of
+  `registry`.
 
 **Examples:**
 

@@ -163,10 +163,13 @@ initramfs:
     dracut --zstd --reproducible --no-hostonly --kver "$INSTALLED_KERNEL" --add "dmsquash-live dmsquash-live-autooverlay" --force /app/{{ workdir }}/initramfs.img |& grep -v -e "Operation not supported"'
     chroot "$CMD"
 
-# Embed the container
-rootfs-include-container container_image=default_image image=default_image:
+# Embed the container so it can be installed offline. Skipped when netinstall
+# is enabled (the default): the installed system fetches the image over the
+# network at install time instead, roughly halving what gets baked into the ISO.
+rootfs-include-container container_image=default_image image=default_image netinstall="1":
     #!/usr/bin/env bash
     {{ _ci_grouping }}
+    {{ if netinstall == "1" { 'exit 0' } else { '' } }}
     {{ chroot_function }}
     set -euo pipefail
     CMD="set -xeuo pipefail
@@ -426,9 +429,9 @@ iso:
 # TODO update this recipe parameters. Make it actually usable
 [no-exit-message]
 [doc('Build a live-iso')]
-@build image=default_image livesys="1" flatpaks_file="src/flatpaks.example.txt" compression="squashfs" extra_kargs="NONE" container_image=image polkit="1": \
+@build image=default_image livesys="1" flatpaks_file="src/flatpaks.example.txt" compression="squashfs" extra_kargs="NONE" container_image=image polkit="1" netinstall="1": \
     checkroot \
-    (show-config image livesys flatpaks_file compression extra_kargs container_image polkit) \
+    (show-config image livesys flatpaks_file compression extra_kargs container_image polkit netinstall) \
     clean \
     init-work \
     (rootfs image) \
@@ -437,7 +440,7 @@ iso:
     (rootfs-include-flatpaks flatpaks_file) \
     (rootfs-include-polkit polkit) \
     (rootfs-install-livesys-scripts livesys) \
-    (rootfs-include-container container_image image) \
+    (rootfs-include-container container_image image netinstall) \
     (hook-post-rootfs HOOK_post_rootfs) \
     rootfs-clean-sysroot \
     (rootfs-selinux-fix image) \
@@ -448,7 +451,7 @@ iso:
     mv ./output.iso {{ justfile_dir() }} &>/dev/null
 
 
-@show-config image livesys flatpaks_file compression extra_kargs container_image polkit:
+@show-config image livesys flatpaks_file compression extra_kargs container_image polkit netinstall:
     echo "Using the following configuration:"
     echo "{{ style('warning') }}################################################################################{{ NORMAL }}"
     echo "PODMAN             := {{ PODMAN }}"
@@ -466,6 +469,7 @@ iso:
     echo "extra_kargs        := {{ extra_kargs }}"
     echo "container_image    := {{ container_image || image }}"
     echo "polkit             := {{ polkit }}"
+    echo "netinstall         := {{ netinstall }}"
     echo "CI                 := {{ env('CI', '') }}"
     echo "ARCH               := {{ arch }}"
     echo "{{ style('warning') }}################################################################################{{ NORMAL }}"
