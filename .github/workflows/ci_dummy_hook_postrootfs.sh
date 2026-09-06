@@ -86,7 +86,7 @@ cat <<EOF >>/usr/share/anaconda/post-scripts/secureboot-enroll-key.ks
 %post --erroronfail --nochroot
 set -oue pipefail
 
-readonly ENROLLMENT_PASSWORD="universalblue"
+readonly ENROLLMENT_PASSWORD="blossomos"
 readonly SECUREBOOT_KEY="/run/install/repo/sb_pubkey.der"
 
 if [[ ! -d "/sys/firmware/efi" ]]; then
