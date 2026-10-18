@@ -1,4 +1,5 @@
 set unstable := true
+set lists := true
 PODMAN := which("podman") || require("podman-remote")
 workdir := env("TITANOBOA_WORKDIR", "work")
 isoroot := env("TITANOBOA_ISO_ROOT", "work/iso-root")
@@ -48,8 +49,9 @@ function chroot(){
     local args="$*"
     ' + PODMAN + ' run --rm -it \
     --privileged \
-    --security-opt label=type:unconfined_t \
+    --security-opt label=disable \
     $args \
+    --network host \
     --tmpfs /tmp:rw \
     --tmpfs /run:rw \
     --volume ' + git_root + ':/app \
@@ -67,6 +69,7 @@ function builder(){
     --privileged \
     --security-opt label=disable \
     --volume ' + git_root + ':/app \
+    --network host \
     ' + builder_image + ' \
     /usr/bin/bash -c "$command" $args
 }'
@@ -94,6 +97,7 @@ function iso_dependencies(){
     local MISSING=()
     local RPMS=(
         dosfstools
+        mtools
         grub2
         grub2-efi
         grub2-tools
@@ -282,7 +286,7 @@ rootfs-selinux-fix image=default_image:
     set -euo pipefail
     CMD='set -xeuo pipefail
     cd /app/{{ rootfs }}
-    setfiles -F -r . /etc/selinux/targeted/contexts/files/file_contexts .
+    setfiles -F -r . /etc/selinux/targeted/contexts/files/file_contexts . || true
     chcon --user=system_u --recursive .'
     {{ PODMAN }} run --rm -it \
         --volume {{ git_root }}:/app \
@@ -376,19 +380,15 @@ iso:
     grub2-mkrescue -o $ISOROOT/../efiboot.img
 
     EFI_BOOT_MOUNT=$(mktemp -d)
-    mount $ISOROOT/../efiboot.img $EFI_BOOT_MOUNT
-    cp -r $EFI_BOOT_MOUNT/boot/grub $ISOROOT/boot/
-    umount $EFI_BOOT_MOUNT
+    xorriso -osirrox on -indev $ISOROOT/../efiboot.img -extract /boot/grub $EFI_BOOT_MOUNT/grub
+    cp -r $EFI_BOOT_MOUNT/grub $ISOROOT/boot/
     rm -rf $EFI_BOOT_MOUNT
 
     # https://github.com/FyraLabs/katsu/blob/1e26ecf74164c90bc24299a66f8495eb2aef4845/src/builder.rs#L145
-    EFI_BOOT_PART=$(mktemp -d)
     fallocate $WORKDIR/efiboot.img -l 25M
     mkfs.msdos -v -n EFI $WORKDIR/efiboot.img
-    mount $WORKDIR/efiboot.img $EFI_BOOT_PART
-    mkdir -p $EFI_BOOT_PART/EFI/BOOT
-    cp -dRvf $ISOROOT/EFI/BOOT/. $EFI_BOOT_PART/EFI/BOOT
-    umount $EFI_BOOT_PART
+    mmd -i $WORKDIR/efiboot.img ::/EFI ::/EFI/BOOT
+    mcopy -s -i $WORKDIR/efiboot.img $ISOROOT/EFI/BOOT/* ::/EFI/BOOT/
 
     ARCH_SPECIFIC=()
     if [ "{{ arch }}" == "x86_64" ] ; then
@@ -422,9 +422,8 @@ iso:
     if ! (( BUILDER )); then
         bash -c "$CMD" "$(realpath {{ isoroot }})" "$(realpath {{ workdir }})"
     else
-        {{ if `systemd-detect-virt -c || true` != 'none' { "echo '" + style('error') + "ERROR[iso]" + NORMAL + ": Cannot run in nested containers'; exit 1" } else { '' } }}
         {{ builder_function }}
-        CMD="dnf install -y grub2 grub2-efi grub2-tools grub2-tools-extra xorriso shim dosfstools {{ if arch == "x86_64" { 'grub2-efi-x64-modules grub2-efi-x64-cdboot grub2-efi-x64' } else if arch == "aarch64" { 'grub2-efi-aa64-modules' } else { '' } }}; $CMD"
+        CMD="dnf install -y grub2 grub2-efi grub2-tools grub2-tools-extra xorriso shim dosfstools mtools {{ if arch == "x86_64" { 'grub2-efi-x64-modules grub2-efi-x64-cdboot grub2-efi-x64' } else if arch == "aarch64" { 'grub2-efi-aa64-modules' } else { '' } }}; $CMD"
         builder "$CMD" "/app/{{ isoroot }}" "/app/{{ workdir }}"
     fi
 
@@ -450,7 +449,7 @@ iso:
     (squash compression) \
     (iso-organize extra_kargs) \
     iso
-    mv ./output.iso {{ justfile_dir() }} &>/dev/null
+    mv ./output.iso {{ justfile_dir() }} &>/dev/null || true
 
 
 @show-config image livesys flatpaks_file compression extra_kargs container_image polkit netinstall:

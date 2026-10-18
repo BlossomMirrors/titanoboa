@@ -14,12 +14,12 @@ set timeout=10
 
 search --no-floppy --set=root -l 'blossomos'
 
-menuentry '@PRETTY_NAME@ Live ISO' --class fedora --class gnu-linux --class gnu --class os {
+menuentry '@PRETTY_NAME@' --class fedora --class gnu-linux --class gnu --class os {
   linux ($root)/boot/vmlinuz quiet rhgb root=live:CDLABEL=blossomos enforcing=0 rd.live.image @EXTRA_KARGS@
   initrd ($root)/boot/initramfs.img
 }
 
-menuentry '@PRETTY_NAME@ Live ISO (Basic Graphics Mode)' --class fedora --class gnu-linux --class gnu --class os {
+menuentry '@PRETTY_NAME@ (Basic Graphics Mode)' --class fedora --class gnu-linux --class gnu --class os {
   linux ($root)/boot/vmlinuz quiet rhgb root=live:CDLABEL=blossomos enforcing=0 rd.live.image nomodeset @EXTRA_KARGS@
   initrd ($root)/boot/initramfs.img
 }
